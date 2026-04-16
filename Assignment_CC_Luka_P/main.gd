@@ -1,45 +1,57 @@
 extends Node2D
 
-# midi channels for each instrument
 const GUITAR_CH = 0
 const MARIMBA_CH = 1
 const STRINGS_CH = 2
 
-# midi notes per row (top = high pitch, bottom = low)
 const GUITAR_NOTES = [72, 64, 60]
 const MARIMBA_NOTES = [76, 67, 62]
 const STRINGS_NOTES = [69, 62, 57]
 
-# grid is 3 rows x 7 cols
 const ROWS = 3
-const COLS = 7
+const COLS = 8
+const NUM_LINES = 4
 
-# 0 = empty, 1 = guitar, 2 = kick, 3 = drums
-var all_lines = []       # stores all 4 lines data
-var current_line = 0     # which line we are editing rn
-var current_grid = []    # the grid we are currently editing (2d array)
+var all_lines = []
+var current_line = 0
+var current_grid = []
 
 var is_playing = false
-var step = 0             # current column in the sequence
+var step = 0
 var step_timer = 0.0
-var step_speed = 0.2     # seconds per beat, can tweak this
+var step_speed = 0.5
+var bpm = 120.0
 
-var block_buttons = []   # holds references to the buttons in the grid
+var block_buttons = []
 
-# colors for each sound type
+# beat indicator stuff
+var beat_blocks = []
+var beat_flash_timer = 0.0
+var beat_is_lit = false
+var beat_flash_duration = 0.1  # how long the flash stays on in seconds
+
+# line indicator stuff
+var line_bars = []
+
+# colors
 var color_empty = Color(0.3, 0.3, 0.3)
 var color_guitar = Color(0.2, 0.8, 0.2)
-var color_kick = Color(0.8, 0.2, 0.2)
-var color_drums = Color(0.2, 0.4, 0.9)
+var color_marimba = Color(0.8, 0.2, 0.2)
+var color_strings = Color(0.2, 0.4, 0.9)
+
+var color_beat_off = Color(0.2, 0.2, 0.2)
+var color_beat_on = Color(1.0, 0.85, 0.2)  # yellow flash
+
+var color_bar_inactive = Color(0.25, 0.25, 0.25)
+var color_bar_active = Color(0.9, 0.9, 0.9)
 
 
 func _ready():
-	change_instrument(GUITAR_CH, 25)   # acoustic guitar
-	change_instrument(MARIMBA_CH, 12)  # marimba
-	change_instrument(STRINGS_CH, 45)  # pizzicato strings
+	change_instrument(GUITAR_CH, 25)
+	change_instrument(MARIMBA_CH, 12)
+	change_instrument(STRINGS_CH, 45)
 
-	# init all 4 lines as empty grids
-	for i in range(4):
+	for i in range(NUM_LINES):
 		var empty_line = []
 		for r in range(ROWS):
 			var row_data = []
@@ -49,11 +61,61 @@ func _ready():
 		all_lines.append(empty_line)
 
 	current_grid = all_lines[0]
+
+	build_beat_indicator()
+	build_line_indicator()
 	build_grid()
+
+	$CanvasLayer/VBox/BpmSlider.value = bpm
+	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
+	update_step_speed()
+
+	if not $CanvasLayer/VBox/BpmSlider.value_changed.is_connected(_on_bpm_slider_value_changed):
+		$CanvasLayer/VBox/BpmSlider.value_changed.connect(_on_bpm_slider_value_changed)
+
+
+func build_beat_indicator():
+	# 8 small blocks that flash yellow on each beat
+	beat_blocks = []
+	for i in range(COLS):
+		var b = ColorRect.new()
+		b.custom_minimum_size = Vector2(60, 16)
+		b.color = color_beat_off
+		$CanvasLayer/VBox/BeatIndicator.add_child(b)
+		beat_blocks.append(b)
+
+
+func build_line_indicator():
+	# 4 horizontal bars, active one is bright
+	line_bars = []
+	for i in range(NUM_LINES):
+		var bar = ColorRect.new()
+		bar.custom_minimum_size = Vector2(490, 14)  # roughly matches grid width
+		if i == current_line:
+			bar.color = color_bar_active
+		else:
+			bar.color = color_bar_inactive
+		# stack them vertically inside the HBox with a tiny gap using a VBox trick
+		var wrapper = VBoxContainer.new()
+		var spacer = Control.new()
+		spacer.custom_minimum_size = Vector2(0, 3)
+		wrapper.add_child(bar)
+		wrapper.add_child(spacer)
+		$CanvasLayer/VBox/LineIndicator.add_child(wrapper)
+		line_bars.append(bar)
+
+	refresh_line_indicator()
+
+
+func refresh_line_indicator():
+	for i in range(NUM_LINES):
+		if i == current_line:
+			line_bars[i].color = color_bar_active
+		else:
+			line_bars[i].color = color_bar_inactive
 
 
 func build_grid():
-	# clear whatever was in the grid before
 	for child in $CanvasLayer/VBox/Grid.get_children():
 		child.queue_free()
 
@@ -65,7 +127,6 @@ func build_grid():
 			var btn = Button.new()
 			btn.custom_minimum_size = Vector2(60, 60)
 
-			# little trick to pass row and col into the signal
 			var r_copy = r
 			var c_copy = c
 			btn.pressed.connect(func(): on_block_clicked(r_copy, c_copy))
@@ -83,25 +144,38 @@ func refresh_grid_colors():
 		for c in range(COLS):
 			var val = current_grid[r][c]
 			var btn = block_buttons[r][c]
+
+			var is_active_col = is_playing and (c == step)
+
 			if val == 0:
-				btn.modulate = color_empty
 				btn.text = ""
+				if is_active_col:
+					btn.modulate = Color(0.6, 0.6, 0.6)
+				else:
+					btn.modulate = color_empty
 			elif val == 1:
-				btn.modulate = color_guitar
 				btn.text = "G"
+				if is_active_col:
+					btn.modulate = Color(0.5, 1.0, 0.5)
+				else:
+					btn.modulate = color_guitar
 			elif val == 2:
-				btn.modulate = color_kick
 				btn.text = "M"
+				if is_active_col:
+					btn.modulate = Color(0.5, 0.8, 1.0)
+				else:
+					btn.modulate = color_marimba
 			elif val == 3:
-				btn.modulate = color_drums
 				btn.text = "S"
+				if is_active_col:
+					btn.modulate = Color(0.8, 0.6, 1.0)
+				else:
+					btn.modulate = color_strings
 
 
 func on_block_clicked(r, c):
 	if is_playing:
-		return  # dont let them edit while playing
-
-	# cycle through 0 -> 1 -> 2 -> 3 -> 0
+		return
 	current_grid[r][c] = (current_grid[r][c] + 1) % 4
 	refresh_grid_colors()
 
@@ -115,26 +189,18 @@ func _input(event):
 func on_enter_pressed():
 	if is_playing:
 		return
-
 	if current_line < 3:
-		current_line += 1
-		current_grid = all_lines[current_line]
-		build_grid()
-		$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
+		go_to_line(current_line + 1)
 	else:
-		# all 4 lines done, start playing!
-		$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
 		start_playing()
 
-	if current_line < 3:
-		current_line += 1
-		current_grid = all_lines[current_line]
-		build_grid()
-		$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
-	else:
-		# all 4 lines done, start playing!
-		$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
-		start_playing()
+
+func go_to_line(idx):
+	current_line = idx
+	current_grid = all_lines[current_line]
+	build_grid()
+	refresh_line_indicator()
+	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
 
 
 func start_playing():
@@ -142,40 +208,73 @@ func start_playing():
 	step = 0
 	step_timer = 0.0
 	$CanvasLayer/VBox/HBox/PlayButton.text = "Stop"
+	$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
 
 
 func stop_playing():
 	is_playing = false
+	step = 0
+	# turn off all beat blocks when stopped
+	for b in beat_blocks:
+		b.color = color_beat_off
 	$CanvasLayer/VBox/HBox/PlayButton.text = "Play"
-	$CanvasLayer/VBox/StatusLabel.text = "Stopped. Press Play to resume"
+	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
+	refresh_grid_colors()
+
+
+func update_step_speed():
+	step_speed = 60.0 / bpm
+
+
+func _on_bpm_slider_value_changed(value):
+	bpm = value
+	update_step_speed()
+	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
 
 
 func _process(delta):
+	# handle beat flash fading out
+	if beat_is_lit:
+		beat_flash_timer += delta
+		if beat_flash_timer >= beat_flash_duration:
+			beat_is_lit = false
+			for b in beat_blocks:
+				b.color = color_beat_off
+
 	if not is_playing:
 		return
 
 	step_timer += delta
 	if step_timer >= step_speed:
 		step_timer = 0.0
+		flash_beat()
 		play_current_step()
-		step = (step + 1) % COLS  # loop back after 7 steps
+		step = (step + 1) % COLS
+
+
+func flash_beat():
+	# light up all beat blocks for a short moment
+	beat_is_lit = true
+	beat_flash_timer = 0.0
+	for b in beat_blocks:
+		b.color = color_beat_on
 
 
 func play_current_step():
-	# go through all 4 lines and play whatever is in the current column
-	for line_idx in range(4):
+	for line_idx in range(NUM_LINES):
 		var line_data = all_lines[line_idx]
 		for r in range(ROWS):
 			var sound = line_data[r][step]
 			if sound == 0:
-				continue  # nothing here
-
+				continue
 			if sound == 1:
 				play_note(GUITAR_NOTES[r], step_speed * 0.9, GUITAR_CH)
 			elif sound == 2:
 				play_note(MARIMBA_NOTES[r], step_speed * 0.9, MARIMBA_CH)
 			elif sound == 3:
 				play_note(STRINGS_NOTES[r], step_speed * 0.9, STRINGS_CH)
+
+	refresh_grid_colors()
 
 
 func _on_play_button_pressed():
@@ -185,7 +284,7 @@ func _on_play_button_pressed():
 		start_playing()
 
 
-# --- your premade functions below, didnt touch them ---
+# --- premade functions ---
 
 func change_instrument(channel, instrument):
 	var midi_event = InputEventMIDI.new()

@@ -17,13 +17,27 @@ offset_top = 294.0
 offset_right = 671.0
 offset_bottom = 356.0
 
+[node name="BeatIndicator" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=1263288663]
+layout_mode = 2
+
 [node name="StatusLabel" type="Label" parent="CanvasLayer/VBox" unique_id=1156148165]
 layout_mode = 2
 text = "Line 1 / 4 — Click blocks, Enter to confirm"
 
+[node name="BpmLabel" type="Label" parent="CanvasLayer/VBox" unique_id=1986244167]
+layout_mode = 2
+text = "                                                      BPM"
+
+[node name="BpmSlider" type="HSlider" parent="CanvasLayer/VBox" unique_id=1927259228]
+layout_mode = 2
+max_value = 240.0
+
 [node name="Grid" type="GridContainer" parent="CanvasLayer/VBox" unique_id=743648020]
 layout_mode = 2
-columns = 7
+columns = 8
+
+[node name="LineIndicator" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=1354435756]
+layout_mode = 2
 
 [node name="HBox" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=976310661]
 layout_mode = 2
@@ -33,12 +47,5 @@ layout_mode = 2
 text = "Play
 "
 
-[node name="PrevButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=1185952610]
-layout_mode = 2
-text = "previous"
-
-[node name="NextButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=534924070]
-layout_mode = 2
-text = "next"
-
+[connection signal="value_changed" from="CanvasLayer/VBox/BpmSlider" to="." method="_on_bpm_slider_value_changed"]
 [connection signal="pressed" from="CanvasLayer/VBox/HBox/PlayButton" to="." method="_on_play_button_pressed"]
