@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://4pqund3nukl7"]
+
+[ext_resource type="Script" uid="uid://dt3nc4our1mgp" path="res://main.gd" id="1_0e48y"]
+[ext_resource type="PackedScene" uid="uid://cuyd1qv0pn26e" path="res://addons/midi/MidiPlayer.tscn" id="2_epypp"]
+
+[node name="Main" type="Node2D" unique_id=862204301]
+script = ExtResource("1_0e48y")
+
+[node name="MidiPlayer" parent="." unique_id=1314519785 instance=ExtResource("2_epypp")]
+soundfont = "res://Aspirin-Stereo.sf2"
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1110620905]
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer" unique_id=278864059]
+offset_left = 352.0
+offset_top = 294.0
+offset_right = 671.0
+offset_bottom = 356.0
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/VBox" unique_id=1156148165]
+layout_mode = 2
+text = "Line 1 / 4 — Click blocks, Enter to confirm"
+
+[node name="Grid" type="GridContainer" parent="CanvasLayer/VBox" unique_id=743648020]
+layout_mode = 2
+columns = 7
+
+[node name="HBox" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=976310661]
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=1760119436]
+layout_mode = 2
+text = "Play
+"
+
+[connection signal="pressed" from="CanvasLayer/VBox/HBox/PlayButton" to="." method="_on_play_button_pressed"]
