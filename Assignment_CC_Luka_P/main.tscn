@@ -33,4 +33,12 @@ layout_mode = 2
 text = "Play
 "
 
+[node name="PrevButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=1185952610]
+layout_mode = 2
+text = "previous"
+
+[node name="NextButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=534924070]
+layout_mode = 2
+text = "next"
+
 [connection signal="pressed" from="CanvasLayer/VBox/HBox/PlayButton" to="." method="_on_play_button_pressed"]

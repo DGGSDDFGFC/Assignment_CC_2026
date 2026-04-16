@@ -126,6 +126,16 @@ func on_enter_pressed():
 		$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
 		start_playing()
 
+	if current_line < 3:
+		current_line += 1
+		current_grid = all_lines[current_line]
+		build_grid()
+		$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
+	else:
+		# all 4 lines done, start playing!
+		$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
+		start_playing()
+
 
 func start_playing():
 	is_playing = true
