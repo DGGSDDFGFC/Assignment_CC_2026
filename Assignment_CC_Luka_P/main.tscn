@@ -12,17 +12,59 @@ soundfont = "res://Aspirin-Stereo.sf2"
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1110620905]
 
 [node name="VBox" type="VBoxContainer" parent="CanvasLayer" unique_id=278864059]
-offset_left = 352.0
-offset_top = 294.0
-offset_right = 671.0
-offset_bottom = 356.0
+custom_minimum_size = Vector2(450, 0)
+offset_left = 377.0
+offset_top = 145.0
+offset_right = 1043.0
+offset_bottom = 354.0
+
+[node name="LineIndicatorOverlay" type="Control" parent="CanvasLayer/VBox" unique_id=827147779]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Playhead" type="ColorRect" parent="CanvasLayer/VBox/LineIndicatorOverlay" unique_id=1990301154]
+custom_minimum_size = Vector2(4, 56)
+layout_mode = 0
+offset_left = -282.0
+offset_top = -145.0
+offset_right = -242.0
+offset_bottom = -105.0
+
+[node name="LineIndicator" type="VBoxContainer" parent="CanvasLayer/VBox" unique_id=535781381]
+custom_minimum_size = Vector2(450, 0)
+layout_mode = 2
+
+[node name="Bar0" type="ColorRect" parent="CanvasLayer/VBox/LineIndicator" unique_id=1385436526]
+custom_minimum_size = Vector2(0, 15)
+layout_mode = 2
+color = Color(0.36282945, 0.36282945, 0.36282945, 1)
+
+[node name="Bar1" type="ColorRect" parent="CanvasLayer/VBox/LineIndicator" unique_id=1026788446]
+custom_minimum_size = Vector2(0, 15)
+layout_mode = 2
+color = Color(0.36282945, 0.36282945, 0.36282945, 1)
+
+[node name="Bar2" type="ColorRect" parent="CanvasLayer/VBox/LineIndicator" unique_id=1618616818]
+custom_minimum_size = Vector2(0, 15)
+layout_mode = 2
+color = Color(0.36282945, 0.36282945, 0.36282945, 1)
+
+[node name="Bar3" type="ColorRect" parent="CanvasLayer/VBox/LineIndicator" unique_id=435369935]
+custom_minimum_size = Vector2(0, 15)
+layout_mode = 2
+color = Color(0.36282945, 0.36282945, 0.36282945, 1)
 
 [node name="BeatIndicator" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=1263288663]
+custom_minimum_size = Vector2(450, 16)
 layout_mode = 2
 
 [node name="StatusLabel" type="Label" parent="CanvasLayer/VBox" unique_id=1156148165]
 layout_mode = 2
-text = "Line 1 / 4 — Click blocks, Enter to confirm"
+text = "Line 1 / 4 — Click blocks to put in sounds. Click arrow up/down to swich between lines."
+
+[node name="Grid" type="GridContainer" parent="CanvasLayer/VBox" unique_id=743648020]
+layout_mode = 2
+columns = 8
 
 [node name="BpmLabel" type="Label" parent="CanvasLayer/VBox" unique_id=1986244167]
 layout_mode = 2
@@ -32,20 +74,10 @@ text = "                                                      BPM"
 layout_mode = 2
 max_value = 240.0
 
-[node name="Grid" type="GridContainer" parent="CanvasLayer/VBox" unique_id=743648020]
-layout_mode = 2
-columns = 8
-
-[node name="LineIndicator" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=1354435756]
-layout_mode = 2
-
-[node name="HBox" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=976310661]
-layout_mode = 2
-
-[node name="PlayButton" type="Button" parent="CanvasLayer/VBox/HBox" unique_id=1760119436]
+[node name="PlayButton" type="Button" parent="CanvasLayer/VBox" unique_id=1760119436]
 layout_mode = 2
 text = "Play
 "
 
 [connection signal="value_changed" from="CanvasLayer/VBox/BpmSlider" to="." method="_on_bpm_slider_value_changed"]
-[connection signal="pressed" from="CanvasLayer/VBox/HBox/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="CanvasLayer/VBox/PlayButton" to="." method="_on_play_button_pressed"]

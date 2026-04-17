@@ -28,10 +28,13 @@ var block_buttons = []
 var beat_blocks = []
 var beat_flash_timer = 0.0
 var beat_is_lit = false
-var beat_flash_duration = 0.1  # how long the flash stays on in seconds
+var beat_flash_duration = 0.1
 
 # line indicator stuff
 var line_bars = []
+
+# playhead stuff
+var playhead_x = 0.0
 
 # colors
 var color_empty = Color(0.3, 0.3, 0.3)
@@ -40,7 +43,7 @@ var color_marimba = Color(0.8, 0.2, 0.2)
 var color_strings = Color(0.2, 0.4, 0.9)
 
 var color_beat_off = Color(0.2, 0.2, 0.2)
-var color_beat_on = Color(1.0, 0.85, 0.2)  # yellow flash
+var color_beat_on = Color(1.0, 0.85, 0.2)
 
 var color_bar_inactive = Color(0.25, 0.25, 0.25)
 var color_bar_active = Color(0.9, 0.9, 0.9)
@@ -73,9 +76,10 @@ func _ready():
 	if not $CanvasLayer/VBox/BpmSlider.value_changed.is_connected(_on_bpm_slider_value_changed):
 		$CanvasLayer/VBox/BpmSlider.value_changed.connect(_on_bpm_slider_value_changed)
 
+	$CanvasLayer/VBox/PlayButton.pressed.connect(_on_play_button_pressed)
+
 
 func build_beat_indicator():
-	# 8 small blocks that flash yellow on each beat
 	beat_blocks = []
 	for i in range(COLS):
 		var b = ColorRect.new()
@@ -86,24 +90,11 @@ func build_beat_indicator():
 
 
 func build_line_indicator():
-	# 4 horizontal bars, active one is bright
 	line_bars = []
-	for i in range(NUM_LINES):
-		var bar = ColorRect.new()
-		bar.custom_minimum_size = Vector2(490, 14)  # roughly matches grid width
-		if i == current_line:
-			bar.color = color_bar_active
-		else:
-			bar.color = color_bar_inactive
-		# stack them vertically inside the HBox with a tiny gap using a VBox trick
-		var wrapper = VBoxContainer.new()
-		var spacer = Control.new()
-		spacer.custom_minimum_size = Vector2(0, 3)
-		wrapper.add_child(bar)
-		wrapper.add_child(spacer)
-		$CanvasLayer/VBox/LineIndicator.add_child(wrapper)
-		line_bars.append(bar)
-
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar0)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar1)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar2)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar3)
 	refresh_line_indicator()
 
 
@@ -182,17 +173,24 @@ func on_block_clicked(r, c):
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ENTER:
-			on_enter_pressed()
+		if event.keycode == KEY_DOWN:
+			on_arrow_down()
+		elif event.keycode == KEY_UP:
+			on_arrow_up()
 
 
-func on_enter_pressed():
+func on_arrow_down():
 	if is_playing:
 		return
 	if current_line < 3:
 		go_to_line(current_line + 1)
-	else:
-		start_playing()
+
+
+func on_arrow_up():
+	if is_playing:
+		return
+	if current_line > 0:
+		go_to_line(current_line - 1)
 
 
 func go_to_line(idx):
@@ -207,18 +205,23 @@ func start_playing():
 	is_playing = true
 	step = 0
 	step_timer = 0.0
-	$CanvasLayer/VBox/HBox/PlayButton.text = "Stop"
+	playhead_x = 0.0
+	$CanvasLayer/VBox/PlayButton.text = "Stop"
 	$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
 
 
 func stop_playing():
 	is_playing = false
 	step = 0
-	# turn off all beat blocks when stopped
+	playhead_x = 0.0
+	# reset playhead position
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	playhead.position.x = 0
+	# turn off beat blocks
 	for b in beat_blocks:
 		b.color = color_beat_off
-	$CanvasLayer/VBox/HBox/PlayButton.text = "Play"
-	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
+	$CanvasLayer/VBox/PlayButton.text = "Play"
+	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks to edit" % (current_line + 1)
 	refresh_grid_colors()
 
 
@@ -245,6 +248,22 @@ func _process(delta):
 		return
 
 	step_timer += delta
+
+	# update playhead position smoothly
+	# total time for one full loop across all 4 lines
+	var total_loop_time = step_speed * COLS * NUM_LINES
+	var elapsed = (step * step_speed) + step_timer  # how far we are in the loop
+	var progress = fmod(elapsed, total_loop_time) / total_loop_time
+
+	var bar = $CanvasLayer/VBox/LineIndicator/Bar0
+	var bar_width = bar.get_rect().size.x
+	playhead_x = progress * bar_width
+
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	var indicator = $CanvasLayer/VBox/LineIndicator
+	playhead.size = Vector2(4, indicator.get_rect().size.y)
+	playhead.global_position = Vector2(indicator.global_position.x + playhead_x, indicator.global_position.y)
+
 	if step_timer >= step_speed:
 		step_timer = 0.0
 		flash_beat()
@@ -253,7 +272,6 @@ func _process(delta):
 
 
 func flash_beat():
-	# light up all beat blocks for a short moment
 	beat_is_lit = true
 	beat_flash_timer = 0.0
 	for b in beat_blocks:
