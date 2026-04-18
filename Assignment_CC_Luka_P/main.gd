@@ -24,14 +24,11 @@ var bpm = 120.0
 
 var block_buttons = []
 
-# beat indicator stuff
-var beat_blocks = []
-var beat_flash_timer = 0.0
-var beat_is_lit = false
-var beat_flash_duration = 0.1  # how long the flash stays on in seconds
-
 # line indicator stuff
 var line_bars = []
+
+# playhead stuff
+var playhead_x = 0.0
 
 # colors
 var color_empty = Color(0.3, 0.3, 0.3)
@@ -40,7 +37,7 @@ var color_marimba = Color(0.8, 0.2, 0.2)
 var color_strings = Color(0.2, 0.4, 0.9)
 
 var color_beat_off = Color(0.2, 0.2, 0.2)
-var color_beat_on = Color(1.0, 0.85, 0.2)  # yellow flash
+var color_beat_on = Color(1.0, 0.85, 0.2)
 
 var color_bar_inactive = Color(0.25, 0.25, 0.25)
 var color_bar_active = Color(0.9, 0.9, 0.9)
@@ -62,7 +59,6 @@ func _ready():
 
 	current_grid = all_lines[0]
 
-	build_beat_indicator()
 	build_line_indicator()
 	build_grid()
 
@@ -73,37 +69,16 @@ func _ready():
 	if not $CanvasLayer/VBox/BpmSlider.value_changed.is_connected(_on_bpm_slider_value_changed):
 		$CanvasLayer/VBox/BpmSlider.value_changed.connect(_on_bpm_slider_value_changed)
 
+	$CanvasLayer/VBox/PlayButton.pressed.connect(_on_play_button_pressed)
 
-func build_beat_indicator():
-	# 8 small blocks that flash yellow on each beat
-	beat_blocks = []
-	for i in range(COLS):
-		var b = ColorRect.new()
-		b.custom_minimum_size = Vector2(60, 16)
-		b.color = color_beat_off
-		$CanvasLayer/VBox/BeatIndicator.add_child(b)
-		beat_blocks.append(b)
 
 
 func build_line_indicator():
-	# 4 horizontal bars, active one is bright
 	line_bars = []
-	for i in range(NUM_LINES):
-		var bar = ColorRect.new()
-		bar.custom_minimum_size = Vector2(490, 14)  # roughly matches grid width
-		if i == current_line:
-			bar.color = color_bar_active
-		else:
-			bar.color = color_bar_inactive
-		# stack them vertically inside the HBox with a tiny gap using a VBox trick
-		var wrapper = VBoxContainer.new()
-		var spacer = Control.new()
-		spacer.custom_minimum_size = Vector2(0, 3)
-		wrapper.add_child(bar)
-		wrapper.add_child(spacer)
-		$CanvasLayer/VBox/LineIndicator.add_child(wrapper)
-		line_bars.append(bar)
-
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar0)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar1)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar2)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar3)
 	refresh_line_indicator()
 
 
@@ -145,32 +120,18 @@ func refresh_grid_colors():
 			var val = current_grid[r][c]
 			var btn = block_buttons[r][c]
 
-			var is_active_col = is_playing and (c == step)
-
 			if val == 0:
 				btn.text = ""
-				if is_active_col:
-					btn.modulate = Color(0.6, 0.6, 0.6)
-				else:
-					btn.modulate = color_empty
+				btn.modulate = color_empty
 			elif val == 1:
 				btn.text = "G"
-				if is_active_col:
-					btn.modulate = Color(0.5, 1.0, 0.5)
-				else:
-					btn.modulate = color_guitar
+				btn.modulate = color_guitar
 			elif val == 2:
 				btn.text = "M"
-				if is_active_col:
-					btn.modulate = Color(0.5, 0.8, 1.0)
-				else:
-					btn.modulate = color_marimba
+				btn.modulate = color_marimba
 			elif val == 3:
 				btn.text = "S"
-				if is_active_col:
-					btn.modulate = Color(0.8, 0.6, 1.0)
-				else:
-					btn.modulate = color_strings
+				btn.modulate = color_strings
 
 
 func on_block_clicked(r, c):
@@ -182,17 +143,24 @@ func on_block_clicked(r, c):
 
 func _input(event):
 	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ENTER:
-			on_enter_pressed()
+		if event.keycode == KEY_DOWN:
+			on_arrow_down()
+		elif event.keycode == KEY_UP:
+			on_arrow_up()
 
 
-func on_enter_pressed():
+func on_arrow_down():
 	if is_playing:
 		return
 	if current_line < 3:
 		go_to_line(current_line + 1)
-	else:
-		start_playing()
+
+
+func on_arrow_up():
+	if is_playing:
+		return
+	if current_line > 0:
+		go_to_line(current_line - 1)
 
 
 func go_to_line(idx):
@@ -207,18 +175,20 @@ func start_playing():
 	is_playing = true
 	step = 0
 	step_timer = 0.0
-	$CanvasLayer/VBox/HBox/PlayButton.text = "Stop"
+	playhead_x = 0.0
+	$CanvasLayer/VBox/PlayButton.text = "Stop"
 	$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
 
 
 func stop_playing():
 	is_playing = false
 	step = 0
-	# turn off all beat blocks when stopped
-	for b in beat_blocks:
-		b.color = color_beat_off
-	$CanvasLayer/VBox/HBox/PlayButton.text = "Play"
-	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
+	playhead_x = 0.0
+	# reset playhead position
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	playhead.position.x = 0
+	$CanvasLayer/VBox/PlayButton.text = "Play"
+	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks to edit" % (current_line + 1)
 	refresh_grid_colors()
 
 
@@ -233,31 +203,27 @@ func _on_bpm_slider_value_changed(value):
 
 
 func _process(delta):
-	# handle beat flash fading out
-	if beat_is_lit:
-		beat_flash_timer += delta
-		if beat_flash_timer >= beat_flash_duration:
-			beat_is_lit = false
-			for b in beat_blocks:
-				b.color = color_beat_off
-
 	if not is_playing:
 		return
-
 	step_timer += delta
+
+	var step_progress = step_timer / step_speed  
+	var total_progress = (step + step_progress) / COLS 
+
+	var bar_width = $CanvasLayer/VBox/LineIndicator/Bar0.get_rect().size.x
+	playhead_x = total_progress * bar_width
+
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	var indicator = $CanvasLayer/VBox/LineIndicator
+	playhead.size = Vector2(4, indicator.get_rect().size.y)
+	playhead.global_position = Vector2(indicator.global_position.x + playhead_x, indicator.global_position.y)
+
 	if step_timer >= step_speed:
 		step_timer = 0.0
-		flash_beat()
 		play_current_step()
 		step = (step + 1) % COLS
 
 
-func flash_beat():
-	# light up all beat blocks for a short moment
-	beat_is_lit = true
-	beat_flash_timer = 0.0
-	for b in beat_blocks:
-		b.color = color_beat_on
 
 
 func play_current_step():
@@ -273,8 +239,6 @@ func play_current_step():
 				play_note(MARIMBA_NOTES[r], step_speed * 0.9, MARIMBA_CH)
 			elif sound == 3:
 				play_note(STRINGS_NOTES[r], step_speed * 0.9, STRINGS_CH)
-
-	refresh_grid_colors()
 
 
 func _on_play_button_pressed():
