@@ -18,18 +18,6 @@ offset_top = 145.0
 offset_right = 827.0
 offset_bottom = 381.0
 
-[node name="LineIndicatorOverlay" type="Control" parent="CanvasLayer/VBox" unique_id=827147779]
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Playhead" type="ColorRect" parent="CanvasLayer/VBox/LineIndicatorOverlay" unique_id=1990301154]
-custom_minimum_size = Vector2(4, 56)
-layout_mode = 0
-offset_left = -282.0
-offset_top = -145.0
-offset_right = -242.0
-offset_bottom = -105.0
-
 [node name="LineIndicator" type="VBoxContainer" parent="CanvasLayer/VBox" unique_id=535781381]
 custom_minimum_size = Vector2(450, 0)
 layout_mode = 2
@@ -53,6 +41,19 @@ color = Color(0.36282945, 0.36282945, 0.36282945, 1)
 custom_minimum_size = Vector2(0, 15)
 layout_mode = 2
 color = Color(0.36282945, 0.36282945, 0.36282945, 1)
+
+[node name="LineIndicatorOverlay" type="Control" parent="CanvasLayer/VBox" unique_id=827147779]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Playhead" type="ColorRect" parent="CanvasLayer/VBox/LineIndicatorOverlay" unique_id=1990301154]
+custom_minimum_size = Vector2(4, 56)
+layout_mode = 0
+offset_left = -78.0
+offset_top = -363.0
+offset_right = -38.0
+offset_bottom = -307.0
+color = Color(0.8784314, 0.9098039, 0, 1)
 
 [node name="BeatIndicator" type="HBoxContainer" parent="CanvasLayer/VBox" unique_id=1263288663]
 custom_minimum_size = Vector2(450, 16)
@@ -82,6 +83,28 @@ max_value = 240.0
 layout_mode = 2
 text = "Play
 "
+
+[node name="RichTextLabel" type="RichTextLabel" parent="." unique_id=576694014]
+offset_left = 252.0
+offset_top = 310.0
+offset_right = 364.0
+offset_bottom = 476.0
+text = "higher pitch ->
+
+
+
+
+
+lower pitch ->"
+
+[node name="Label" type="RichTextLabel" parent="." unique_id=723424417]
+offset_left = 447.0
+offset_top = 82.0
+offset_right = 832.0
+offset_bottom = 110.0
+theme_override_font_sizes/normal_font_size = 20
+bbcode_enabled = true
+text = "Guitar - [color=green]G[/color]  |  Marimba - [color=red]M[/color]  |  Strings - [color=#4466ee]S[/color]"
 
 [connection signal="value_changed" from="CanvasLayer/VBox/BpmSlider" to="." method="_on_bpm_slider_value_changed"]
 [connection signal="pressed" from="CanvasLayer/VBox/PlayButton" to="." method="_on_play_button_pressed"]
