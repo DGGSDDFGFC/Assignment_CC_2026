@@ -11,10 +11,11 @@ Music Sequencer
 | **Class Group** | B |
 
 ## Video
-*(YouTube link to be added)*
+[Demonstration of how it works](https://youtu.be/-0mhiM7MOro)
 
 ## Screenshots
-*(Add screenshots here using relative or absolute URLs)*
+<img width="713" height="540" alt="image" src="https://github.com/user-attachments/assets/307e9b1e-f5c1-4d36-80ad-59e83ce1e8a3" />
+
 
 ## Description
 This project is a music sequencer built in Godot 4. It features a 4-line grid system where each line consists of 3 rows and 8 columns of blocks. You can place one of 3 different instruments — Guitar, Marimba, and Pizzicato Strings — into any block to build up melodies. Each row represents a different pitch, with the top row being the highest and the bottom being the lowest. All 4 lines loop simultaneously when played, allowing you to layer sounds and create interesting musical combinations.
