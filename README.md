@@ -8,7 +8,7 @@ Music Sequencer
 |---|---|
 | **Name** | Luka Paranyak |
 | **Student Number** | A00041906 |
-| **Class Group** | TU850 |
+| **Class Group** | B |
 
 ## Video
 *(YouTube link to be added)*
