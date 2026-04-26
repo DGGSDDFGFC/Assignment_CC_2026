@@ -4,37 +4,65 @@ const GUITAR_CH = 0
 const MARIMBA_CH = 1
 const STRINGS_CH = 2
 
-var all_lines = []
-var current_line = 0
-var current_grid = []
 const GUITAR_NOTES = [72, 64, 60]
 const MARIMBA_NOTES = [76, 67, 62]
 const STRINGS_NOTES = [69, 62, 57]
-
-var is_playing = false
-var step = 0
 
 const ROWS = 3
 const COLS = 8
 const NUM_LINES = 4
 
+var all_lines = []
+var current_line = 0
+var current_grid = []
+
+var is_playing = false
+var step = 0
 var step_timer = 0.0
 var step_speed = 0.5
 var bpm = 120.0
+
 var block_buttons = []
 var line_bars = []
-var playhead_x = 0.0
 
 # colors
 var color_empty = Color(0.3, 0.3, 0.3)
 var color_guitar = Color(0.2, 0.8, 0.2)
-var color_bar_inactive = Color(0.25, 0.25, 0.25)
 var color_marimba = Color(0.8, 0.2, 0.2)
 var color_strings = Color(0.2, 0.4, 0.9)
+var color_bar_inactive = Color(0.25, 0.25, 0.25)
 var color_bar_active = Color(0.9, 0.9, 0.9)
 
-# builds grid. It is easier than put all of the buttons inside of scene so I used loops
+
+func _ready():
+	change_instrument(GUITAR_CH, 25)
+	change_instrument(MARIMBA_CH, 12)
+	change_instrument(STRINGS_CH, 45)
+
+	for i in range(NUM_LINES):
+		var empty_line = []
+		for r in range(ROWS):
+			var row_data = []
+			for c in range(COLS):
+				row_data.append(0)
+			empty_line.append(row_data)
+		all_lines.append(empty_line)
+
+	current_grid = all_lines[0]
+	build_line_indicator()
+	build_grid()
+
+	$CanvasLayer/VBox/BpmSlider.value = bpm
+	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
+	step_speed = 60.0 / bpm
+
+	if not $CanvasLayer/VBox/BpmSlider.value_changed.is_connected(_on_bpm_slider_value_changed):
+		$CanvasLayer/VBox/BpmSlider.value_changed.connect(_on_bpm_slider_value_changed)
+	$CanvasLayer/VBox/PlayButton.pressed.connect(_on_play_button_pressed)
+
+
 func build_grid():
+	# easier to generate in code than place 24 buttons manually in the editor
 	for child in $CanvasLayer/VBox/Grid.get_children():
 		child.queue_free()
 	block_buttons = []
@@ -51,39 +79,14 @@ func build_grid():
 		block_buttons.append(row_buttons)
 	refresh_grid_colors()
 
-
-func _ready():
-	change_instrument(GUITAR_CH, 25)
-	change_instrument(MARIMBA_CH, 12)
-	change_instrument(STRINGS_CH, 45)
-
-	# init all the grid data
-	for i in range(NUM_LINES):
-		var empty_line = []
-		for r in range(ROWS):
-			var row_data = []
-			for c in range(COLS):
-				row_data.append(0)
-			empty_line.append(row_data)
-		all_lines.append(empty_line)
-
-	current_grid = all_lines[0]
-	build_line_indicator()
-	build_grid()
-
-	$CanvasLayer/VBox/BpmSlider.value = bpm
-	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
-	update_step_speed()
-	if not $CanvasLayer/VBox/BpmSlider.value_changed.is_connected(_on_bpm_slider_value_changed):
-		$CanvasLayer/VBox/BpmSlider.value_changed.connect(_on_bpm_slider_value_changed)
-	$CanvasLayer/VBox/PlayButton.pressed.connect(_on_play_button_pressed)
-
-
-func on_arrow_down():
-	if is_playing:
-		return
-	if current_line < 3:
-		go_to_line(current_line + 1)
+#adding lines into array for usage
+func build_line_indicator():
+	line_bars = []
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar0)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar1)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar2)
+	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar3)
+	refresh_line_indicator()
 
 
 func refresh_grid_colors():
@@ -104,23 +107,15 @@ func refresh_grid_colors():
 				btn.text = "S"
 				btn.modulate = color_strings
 
-
-func _on_bpm_slider_value_changed(value):
-	bpm = value
-	update_step_speed()
-	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
-
-
-func build_line_indicator():
-	line_bars = []
-	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar0)
-	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar1)
-	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar2)
-	line_bars.append($CanvasLayer/VBox/LineIndicator/Bar3)
-	refresh_line_indicator()
+#for showing on which line you are now
+func refresh_line_indicator():
+	for i in range(NUM_LINES):
+		if i == current_line:
+			line_bars[i].color = color_bar_active
+		else:
+			line_bars[i].color = color_bar_inactive
 
 
-# clicked a block
 func on_block_clicked(r, c):
 	if is_playing:
 		return
@@ -128,15 +123,12 @@ func on_block_clicked(r, c):
 	refresh_grid_colors()
 
 
-func stop_playing():
-	is_playing = false
-	step = 0
-	playhead_x = 0.0
-	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
-	playhead.position.x = 0
-	$CanvasLayer/VBox/PlayButton.text = "Play"
+func go_to_line(idx):
+	current_line = idx
+	current_grid = all_lines[current_line]
+	build_grid()
+	refresh_line_indicator()
 	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks to edit" % (current_line + 1)
-	refresh_grid_colors()
 
 
 func _input(event):
@@ -147,24 +139,11 @@ func _input(event):
 			on_arrow_up()
 
 
-func update_step_speed():
-	step_speed = 60.0 / bpm
-
-
-func go_to_line(idx):
-	current_line = idx
-	current_grid = all_lines[current_line]
-	build_grid()
-	refresh_line_indicator()
-	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks, Enter to confirm" % (current_line + 1)
-
-
-func refresh_line_indicator():
-	for i in range(NUM_LINES):
-		if i == current_line:
-			line_bars[i].color = color_bar_active
-		else:
-			line_bars[i].color = color_bar_inactive
+func on_arrow_down():
+	if is_playing:
+		return
+	if current_line < 3:
+		go_to_line(current_line + 1)
 
 
 func on_arrow_up():
@@ -172,6 +151,25 @@ func on_arrow_up():
 		return
 	if current_line > 0:
 		go_to_line(current_line - 1)
+
+#to start playing
+func start_playing():
+	is_playing = true
+	step = 0
+	step_timer = 0.0
+	$CanvasLayer/VBox/PlayButton.text = "Stop"
+	$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
+	play_current_step()
+
+#to stop playing
+func stop_playing():
+	is_playing = false
+	step = 0
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	playhead.position.x = 0
+	$CanvasLayer/VBox/PlayButton.text = "Play"
+	$CanvasLayer/VBox/StatusLabel.text = "Line %d / 4 — Click blocks to edit" % (current_line + 1)
+	refresh_grid_colors()
 
 
 func _on_play_button_pressed():
@@ -181,8 +179,32 @@ func _on_play_button_pressed():
 		start_playing()
 
 
+func _on_bpm_slider_value_changed(value):
+	bpm = value
+	step_speed = 60.0 / bpm
+	$CanvasLayer/VBox/BpmLabel.text = "BPM: %d" % int(bpm)
+
+
+func _process(delta):
+	if not is_playing:
+		return
+	step_timer += delta
+
+	var step_progress = step_timer / step_speed
+	var total_progress = (step + step_progress) / float(COLS)
+	var bar_width = $CanvasLayer/VBox/LineIndicator/Bar0.get_rect().size.x
+	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
+	var indicator = $CanvasLayer/VBox/LineIndicator
+	playhead.size = Vector2(4, indicator.get_rect().size.y)
+	playhead.global_position = Vector2(indicator.global_position.x + total_progress * bar_width, indicator.global_position.y)
+
+	if step_timer >= step_speed:
+		step_timer = 0.0
+		step = (step + 1) % COLS
+		play_current_step()
+
+#function to play column of sound
 func play_current_step():
-	# go through all lines each step
 	for line_idx in range(NUM_LINES):
 		var line_data = all_lines[line_idx]
 		for r in range(ROWS):
@@ -197,35 +219,6 @@ func play_current_step():
 				play_note(STRINGS_NOTES[r], step_speed * 0.9, STRINGS_CH)
 
 
-func start_playing():
-	is_playing = true
-	step = 0
-	step_timer = 0.0
-	playhead_x = 0.0
-	$CanvasLayer/VBox/PlayButton.text = "Stop"
-	$CanvasLayer/VBox/StatusLabel.text = "Playing! All 4 lines looping"
-	play_current_step()
-
-
-func _process(delta):
-	if not is_playing:
-		return
-	step_timer += delta
-	# playhead position
-	var step_progress = step_timer / step_speed
-	var total_progress = (step + step_progress) / float(COLS)
-	var bar_width = $CanvasLayer/VBox/LineIndicator/Bar0.get_rect().size.x
-	playhead_x = total_progress * bar_width
-	var playhead = $CanvasLayer/VBox/LineIndicatorOverlay/Playhead
-	var indicator = $CanvasLayer/VBox/LineIndicator
-	playhead.size = Vector2(4, indicator.get_rect().size.y)
-	playhead.global_position = Vector2(indicator.global_position.x + playhead_x, indicator.global_position.y)
-	if step_timer >= step_speed:
-		step_timer = 0.0
-		step = (step + 1) % COLS
-		play_current_step()
-
-
 # --- midi ---
 
 func change_instrument(channel, instrument):
@@ -234,7 +227,6 @@ func change_instrument(channel, instrument):
 	midi_event.message = MIDI_MESSAGE_PROGRAM_CHANGE
 	midi_event.instrument = instrument
 	$MidiPlayer.receive_raw_midi_message(midi_event)
-
 
 
 func play_note(note, duration, channel):
